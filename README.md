@@ -4,45 +4,73 @@
 - `terraform-aws-modules/vpc/aws`
 - `terraform-aws-modules/eks/aws`
 
-Підтримується структура репозиторію:
+### Структура репозиторію:
 
-/
-├── backend.tf
-├── main.tf
-├── outputs.tf
-├── terraform.tf
-├── variables.tf
-├── vpc/
-│ ├── backend.tf
-│ ├── main.tf
-│ ├── outputs.tf
-│ ├── terraform.tf
-│ └── variables.tf
-└── eks/
-├── backend.tf
-├── main.tf
-├── outputs.tf
-├── terraform.tf
-└── variables.tf
-
-
-> **Remote state:**  
-> - VPC і EKS зберігають стан у S3 і (опц.) блокуються через DynamoDB.  
-> - `eks` читає виходи `vpc` через `data.terraform_remote_state`.
+   ```
+   /
+   ├── backend.tf
+   ├── main.tf
+   ├── outputs.tf
+   ├── terraform.tf
+   ├── variables.tf
+   ├── vpc/
+   │ ├── backend.tf
+   │ ├── main.tf
+   │ ├── outputs.tf
+   │ ├── terraform.tf
+   │ └── variables.tf
+   └── eks/
+   ├── backend.tf
+   ├── main.tf
+   ├── outputs.tf
+   ├── terraform.tf
+   └── variables.tf 
+   ```
 
 ---
 
-## 🔧 Передумови
+# EKS Cluster Deployment
 
-1. **Windows 10/11 + VS Code**
-2. **Terraform CLI** ≥ 1.3  
-   Перевірка: `terraform -version`
-3. **AWS CLI v2**  
-   Перевірка: `aws --version`
-4. **kubectl** для керування кластером EKS  
-   Перевірка: `kubectl version --client`
-5. **AWS креденшали**  
-   Налаштуйте профіль:
-   ```powershell
+Цей проєкт створює EKS кластер у AWS за допомогою Terraform.
+
+---
+
+# Попередні вимоги
+
+1. Встановлений **Terraform ≥ 1.3.0**
+2. Встановлений **AWS CLI v2**
+3. Встановлений **kubectl**
+4. Налаштований AWS профіль:
+   ```bash
    aws configure
 
+---
+# Кроки запуску
+
+1. Ініціалізація Terraform
+   ```bash
+   terraform init -upgrade
+
+2. Перевірка конфігурації
+   ```bash
+   terraform validate
+
+3. Перегляд плану змін
+   ```bash
+   terraform plan
+
+4. Створення кластера
+   ```bash
+   terraform apply -auto-approve
+
+5. Налаштування kubectl
+   ```bash
+   aws eks update-kubeconfig --name eks-baseline --region eu-central-1
+
+6. Перевірте, що кластер створено:
+   ```bash
+   kubectl cluster-info
+   kubectl get nodes
+   kubectl get pods -n kube-system
+   ```
+   Ви маєте побачити обидві node group-и.

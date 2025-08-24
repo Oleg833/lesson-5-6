@@ -51,21 +51,31 @@ output "node_security_group_arn" {
 ########################################
 
 output "cluster_primary_security_group_id" {
-  description = "Primary security group ID для EKS кластеру"
+  description = "Primary security group ID для EKS кластера"
   value       = module.eks.cluster_primary_security_group_id
+}
+
+# Якщо треба ще й ARN Primary SG
+data "aws_security_group" "cluster_primary" {
+  id = module.eks.cluster_primary_security_group_id
 }
 
 output "cluster_primary_security_group_arn" {
   description = "Primary security group ARN"
-  value       = module.eks.cluster_primary_security_group_arn
+  value       = data.aws_security_group.cluster_primary.arn
 }
 
-########################################
-# Kubeconfig
-########################################
+# ./eks/outputs.tf  (додайте в кінець)
 
-output "kubeconfig" {
-  description = "Kubeconfig для підключення до кластера"
-  value       = module.eks.kubeconfig
-  sensitive   = true
+# Ім'я кластера (є в модулі EKS v20+)
+output "cluster_name" {
+  description = "EKS cluster name"
+  value       = module.eks.cluster_name
 }
+
+# ARN OIDC-провайдера (з'являється, якщо enable_irsa = true)
+output "oidc_provider_arn" {
+  description = "OIDC provider ARN (IRSA)"
+  value       = module.eks.oidc_provider_arn
+}
+

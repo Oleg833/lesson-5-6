@@ -4,28 +4,16 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.0"
+      version = "~> 5.63"
     }
   }
 }
 
 ########################################
-# Providers
+# Provider
 ########################################
 provider "aws" {
   region = var.aws_region
-}
-
-########################################
-# Remote state VPC (S3 backend)
-########################################
-data "terraform_remote_state" "vpc" {
-  backend = "s3"
-  config = {
-    bucket = var.vpc_state_bucket     # напр. "tf-states-876594438088"
-    key    = var.vpc_state_key        # напр. "network/vpc.tfstate"
-    region = var.vpc_state_region     # напр. "eu-central-1"
-  }
 }
 
 ########################################
@@ -40,13 +28,9 @@ locals {
       max_size       = var.mng_max_size
       instance_types = ["t3.medium"]
       capacity_type  = "ON_DEMAND"
-      ami_type       = "AL2_x86_64"
-      labels = {
-        workload = "cpu"
-      }
-      tags = {
-        "k8s.io/cluster-autoscaler/enabled" = "true"
-      }
+      ami_type       = "AL2_x86_64" # або "AL2023_x86_64_STANDARD"
+      labels = { workload = "cpu" }
+      tags   = { "k8s.io/cluster-autoscaler/enabled" = "true" }
     }
   }
 
@@ -56,16 +40,12 @@ locals {
       desired_size   = var.small_mng_desired_size
       min_size       = var.small_mng_min_size
       max_size       = var.small_mng_max_size
-      instance_types = var.small_instance_types   # напр. ["t3.small"] або ["t3.micro"]
-      capacity_type  = "SPOT"
+      instance_types = var.small_instance_types
+      capacity_type  = "SPOT"        # або "ON_DEMAND"
       ami_type       = "AL2_x86_64"
-      labels = {
-        workload = "cpu-small"
-      }
-      taints = [] # додайте за потреби
-      tags = {
-        "k8s.io/cluster-autoscaler/enabled" = "true"
-      }
+      labels = { workload = "cpu-small" }
+      taints = []
+      tags   = { "k8s.io/cluster-autoscaler/enabled" = "true" }
     }
   } : {}
 
@@ -77,23 +57,21 @@ locals {
 ########################################
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"
+  version = "20.24.0"
 
   cluster_name    = var.cluster_name
   cluster_version = var.cluster_version
 
-  # Мережа з VPC remote state
-  vpc_id     = data.terraform_remote_state.vpc.outputs.vpc_id
-  subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnets
+  # стало (беремо з var.*)
+  vpc_id     = var.vpc_id
+  subnet_ids = var.private_subnet_ids
 
-  # Доступ до API
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = false
 
-  # IRSA для сервіс-акаунтів
   enable_irsa = true
 
-  # ✅ v20: нова назва аргументу для node groups
+  # v20: правильний ключ для MNG
   eks_managed_node_groups = local.managed_node_groups
 
   tags = {
@@ -104,25 +82,24 @@ module "eks" {
 }
 
 ########################################
-# AWS Auth ConfigMap (окремий підмодуль у v20)
+# Bootstrap доступу через EKS Access Entries (без aws-auth)
 ########################################
-module "aws_auth" {
-  source  = "terraform-aws-modules/eks/aws//modules/aws-auth"
-  version = "~> 20.0"
+# Надаємо адміністраторські права твоєму ARN (root акаунта 876594438088)
+resource "aws_eks_access_entry" "you_admin" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = "arn:aws:iam::876594438088:root"
+  type          = "STANDARD"
+  depends_on    = [module.eks]
+}
 
-  create_aws_auth_configmap = true
-  enable_cluster_creator_admin_permissions = true
+resource "aws_eks_access_policy_association" "you_admin_policy" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = aws_eks_access_entry.you_admin.principal_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
-  # опційно додати ролі/користувачів:
-  # aws_auth_roles = [
-  #   {
-  #     rolearn  = "arn:aws:iam::<ACCOUNT_ID>:role/<ROLE_NAME>"
-  #     username = "role:<ROLE_NAME>"
-  #     groups   = ["system:masters"]
-  #   }
-  # ]
-  # aws_auth_users    = []
-  # aws_auth_accounts = []
+  access_scope {
+    type = "cluster"
+  }
 
-  depends_on = [module.eks]
+  depends_on = [aws_eks_access_entry.you_admin]
 }

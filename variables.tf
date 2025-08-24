@@ -31,7 +31,7 @@ variable "vpc_name" {
 variable "vpc_cidr" {
   type        = string
   description = "CIDR-блок для VPC"
-  default     = "10.0.0.0/16"
+  default     = "10.16.0.0/16"
 }
 
 variable "azs" {
@@ -43,13 +43,13 @@ variable "azs" {
 variable "private_subnets" {
   type        = list(string)
   description = "CIDR блоки для приватних сабнетів"
-  default     = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  default     = ["10.16.1.0/24", "10.16.2.0/24", "10.16.3.0/24"]
 }
 
 variable "public_subnets" {
   type        = list(string)
   description = "CIDR блоки для публічних сабнетів"
-  default     = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+  default     = ["10.16.101.0/24", "10.16.102.0/24", "10.16.103.0/24"]
 }
 
 ############################

@@ -74,3 +74,8 @@
    kubectl get pods -n kube-system
    ```
    Ви маєте побачити обидві node group-и.
+
+7. Видалення інфраструктури
+
+    ```bash
+    terraform destroy -auto-approve
